@@ -84,6 +84,7 @@ td.n,th.n{text-align:right}
     <div class="controls" id="presets">
       <button data-d="7">7 days</button><button data-d="30" class="on">30 days</button><button data-d="90">90 days</button><button data-d="mtd">MTD</button>
       <input type="date" id="dStart"><input type="date" id="dEnd"><button id="apply">Apply</button>
+      <select id="gSource" style="font:inherit;font-size:13px;border-radius:8px;border:1px solid #2a4258;background:#13304a;color:#fff;padding:7px 11px"><option value="">All sources</option></select>
       <button id="csv">Export CSV</button>
     </div>
   </div>
@@ -114,7 +115,6 @@ td.n,th.n{text-align:right}
       <input id="q" placeholder="Search name, phone, summary, keyword…">
       <select id="fOutcome"><option value="">All outcomes</option></select>
       <select id="fProc"><option value="">All procedures</option></select>
-      <select id="fSource"><option value="">All sources</option></select>
       <select id="fType"><option value="">All call types</option></select>
     </div>
     <div class="calls" id="logList"></div>
@@ -140,8 +140,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TZ = 'America/Los_Angeles'; // Hood River is Pacific; CallRail company is set to Mountain
 const PAL = ['#0D2132','#46C3FC','#38E426','#FF850D','#F4EB2D','#F41F3D','#EF1FF4','#606060'];
-const CACHE_KEY = 'careSmilesAnalysis.v1';
-let CALLS = [], ANALYSIS = {}, charts = {};
+const CACHE_KEY = 'careSmilesAnalysis.v2';
+let CALLS = [], VIEW = [], ANALYSIS = {}, charts = {};
 try { ANALYSIS = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch { ANALYSIS = {}; }
 const save = () => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(ANALYSIS)); } catch {} };
 
@@ -160,6 +160,7 @@ document.querySelectorAll('#presets [data-d]').forEach(b => b.onclick = () => {
   document.querySelectorAll('#presets [data-d]').forEach(x => x.classList.remove('on'));
   b.classList.add('on'); setRange(b.dataset.d); load();
 });
+$('#gSource').onchange = () => render();
 $('#apply').onclick = () => { document.querySelectorAll('#presets [data-d]').forEach(x => x.classList.remove('on')); load(); };
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('on')); b.classList.add('on');
@@ -183,21 +184,25 @@ function status(t, pct){ $('#statusText').textContent = t; $('#barFill').style.w
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function transcribe(id){
-  const s = await (await fetch('/api/transcribe-start?id=' + encodeURIComponent(id))).json();
-  if (!s.jobId) return '';
-  for (let i = 0; i < 60; i++) {
+  const r = await fetch('/api/transcribe-start?id=' + encodeURIComponent(id));
+  const s = await r.json();
+  if (!s.jobId) return { text:'', error: s.error || 'Could not start transcription' };
+  for (let i = 0; i < 90; i++) {
     await sleep(4000);
     const d = await (await fetch('/api/transcribe-status?job=' + s.jobId)).json();
-    if (d.status === 'completed') return d.text;
-    if (d.status === 'error' || d.error) return '';
+    if (d.status === 'completed') return { text: d.text, error: d.text ? '' : 'Empty transcript (no speech detected)' };
+    if (d.status === 'error' || d.error) return { text:'', error: 'AssemblyAI: ' + (d.error || 'failed') };
   }
-  return '';
+  return { text:'', error:'Transcription timed out' };
 }
 
 async function analyzeCall(c){
   let text = '', basis = 'metadata', transcript = '';
+  let tErr = '';
   if (c.crTranscript) { transcript = c.crTranscript; }
-  else if (c.hasRecording && c.duration >= 15) { transcript = await transcribe(c.id); }
+  else if (c.hasRecording && c.duration >= 10) { const t = await transcribe(c.id); transcript = t.text; tErr = t.error; }
+  else if (!c.hasRecording) { tErr = c.answered ? 'No recording in CallRail' : ''; }
+  else { tErr = 'Under 10 seconds'; }
   if (transcript) { text = transcript; basis = 'transcript'; }
   else if (c.crSummary) { text = c.crSummary; basis = 'call summary'; }
   else if (c.note) { text = c.note; basis = 'agent note'; }
@@ -208,13 +213,16 @@ async function analyzeCall(c){
   const a = await r.json();
   if (!r.ok) throw new Error(a.error);
   a.transcript = transcript;
+  a.tErr = tErr;
+  // don't lock in a metadata-only result if a recording exists — retry next load
+  a.retry = !transcript && c.hasRecording && c.duration >= 10;
   return a;
 }
 
 let running = false;
 async function runQueue(force){
   if (running) return; running = true;
-  const todo = CALLS.filter(c => force || !ANALYSIS[c.id]);
+  const todo = CALLS.filter(c => force || !ANALYSIS[c.id] || ANALYSIS[c.id].retry);
   let done = 0, failed = 0;
   const total = todo.length;
   if (!total) { status(`${CALLS.length} calls · all analyzed`, 100); running = false; return; }
@@ -249,19 +257,27 @@ function chart(id, cfg){ if (charts[id]) charts[id].destroy(); charts[id] = new 
 const baseOpts = (extra={}) => ({ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, usePointStyle:true } } }, ...extra });
 
 // ---------- render ----------
+function fillSource(){
+  const cur = $('#gSource').value;
+  const counts = sortObj(count(CALLS, c => c.source));
+  $('#gSource').innerHTML = `<option value="">All sources (${CALLS.length})</option>` + counts.map(([k,n]) => `<option value="${esc(k)}" ${k===cur?'selected':''}>${esc(k)} (${n})</option>`).join('');
+}
 function render(){
+  fillSource();
+  const gs = $('#gSource').value;
+  VIEW = gs ? CALLS.filter(c => c.source === gs) : CALLS;
   renderOverview(); fillFilters(); renderLog(); renderOpps(); renderCamps();
 }
 
 function renderOverview(){
-  const np = CALLS.filter(isNP);
+  const np = VIEW.filter(isNP);
   const booked = np.filter(c => A(c).outcome === 'Booked').length;
-  const missed = CALLS.filter(c => !c.answered || A(c).outcome === 'Missed/Voicemail').length;
+  const missed = VIEW.filter(c => !c.answered || A(c).outcome === 'Missed/Voicemail').length;
   const hv = np.filter(c => A(c).high_value).length;
-  const opps = CALLS.filter(c => A(c).opportunity && A(c).outcome !== 'Booked').length;
+  const opps = VIEW.filter(c => A(c).opportunity && A(c).outcome !== 'Booked').length;
   const lq = np.map(c => A(c).lead_quality).filter(Boolean);
   const k = [
-    [CALLS.length, 'Total calls'],
+    [VIEW.length, 'Total calls'],
     [np.length, 'New patient calls'],
     [booked, 'New patients booked'],
     [np.length ? Math.round(booked / np.length * 100) + '%' : '—', 'New patient booking rate'],
@@ -272,7 +288,7 @@ function renderOverview(){
   $('#kpis').innerHTML = k.map(([v,l]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
 
   // daily
-  const days = {}; CALLS.forEach(c => { const d = pt(c.start).toLocaleDateString('en-CA',{timeZone:TZ}); days[d] = days[d] || {np:0,o:0}; isNP(c) ? days[d].np++ : days[d].o++; });
+  const days = {}; VIEW.forEach(c => { const d = pt(c.start).toLocaleDateString('en-CA',{timeZone:TZ}); days[d] = days[d] || {np:0,o:0}; isNP(c) ? days[d].np++ : days[d].o++; });
   const dk = Object.keys(days).sort();
   chart('cDaily', { type:'bar', data:{ labels: dk.map(d => d.slice(5)), datasets:[
     { label:'New patient', data: dk.map(d => days[d].np), backgroundColor:'#0D2132', borderRadius:3 },
@@ -291,28 +307,27 @@ function renderOverview(){
   chart('cLost', { type:'bar', data:{ labels: lc.map(x=>x[0]), datasets:[{ data: lc.map(x=>x[1]), backgroundColor:'#F41F3D', borderRadius:4 }] },
     options: baseOpts({ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ beginAtZero:true, ticks:{precision:0} }, y:{ grid:{display:false} } } }) });
 
-  const srcs = sortObj(count(CALLS, c => c.source)).slice(0,8).map(x=>x[0]);
+  const srcs = sortObj(count(VIEW, c => c.source)).slice(0,8).map(x=>x[0]);
   chart('cSource', { type:'bar', data:{ labels: srcs, datasets:[
-    { label:'Booked', data: srcs.map(s => CALLS.filter(c => c.source===s && A(c).outcome==='Booked').length), backgroundColor:'#38E426', borderRadius:3 },
-    { label:'Not booked / other', data: srcs.map(s => CALLS.filter(c => c.source===s && A(c).outcome!=='Booked').length), backgroundColor:'#0D2132', borderRadius:3 } ] },
+    { label:'Booked', data: srcs.map(s => VIEW.filter(c => c.source===s && A(c).outcome==='Booked').length), backgroundColor:'#38E426', borderRadius:3 },
+    { label:'Not booked / other', data: srcs.map(s => VIEW.filter(c => c.source===s && A(c).outcome!=='Booked').length), backgroundColor:'#0D2132', borderRadius:3 } ] },
     options: baseOpts({ scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, ticks:{precision:0} } } }) });
 
   const hrs = [...Array(24).keys()];
   const hr = c => +pt(c.start).toLocaleString('en-US',{hour:'numeric',hour12:false,timeZone:TZ}) % 24;
   chart('cHour', { type:'bar', data:{ labels: hrs.map(h => (h%12||12) + (h<12?'a':'p')), datasets:[
-    { label:'Answered', data: hrs.map(h => CALLS.filter(c => c.answered && hr(c)===h).length), backgroundColor:'#46C3FC', borderRadius:3 },
-    { label:'Missed', data: hrs.map(h => CALLS.filter(c => !c.answered && hr(c)===h).length), backgroundColor:'#F41F3D', borderRadius:3 } ] },
+    { label:'Answered', data: hrs.map(h => VIEW.filter(c => c.answered && hr(c)===h).length), backgroundColor:'#46C3FC', borderRadius:3 },
+    { label:'Missed', data: hrs.map(h => VIEW.filter(c => !c.answered && hr(c)===h).length), backgroundColor:'#F41F3D', borderRadius:3 } ] },
     options: baseOpts({ scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, ticks:{precision:0} } } }) });
 }
 
 function fillFilters(){
   const fill = (sel, vals, label) => { const cur = $(sel).value; $(sel).innerHTML = `<option value="">${label}</option>` + [...new Set(vals.filter(Boolean))].sort().map(v => `<option ${v===cur?'selected':''}>${esc(v)}</option>`).join(''); };
-  fill('#fOutcome', CALLS.map(c => A(c).outcome), 'All outcomes');
-  fill('#fProc', CALLS.map(c => A(c).procedure), 'All procedures');
-  fill('#fSource', CALLS.map(c => c.source), 'All sources');
-  fill('#fType', CALLS.map(c => A(c).call_type), 'All call types');
+  fill('#fOutcome', VIEW.map(c => A(c).outcome), 'All outcomes');
+  fill('#fProc', VIEW.map(c => A(c).procedure), 'All procedures');
+  fill('#fType', VIEW.map(c => A(c).call_type), 'All call types');
 }
-['#q','#fOutcome','#fProc','#fSource','#fType'].forEach(s => $(s).addEventListener('input', renderLog));
+['#q','#fOutcome','#fProc','#fType'].forEach(s => $(s).addEventListener('input', renderLog));
 
 function callCard(c){
   const a = A(c);
@@ -340,7 +355,7 @@ function callCard(c){
     <div class="acts">
       ${c.hasRecording ? `<button onclick="play('${c.id}', this)">Play recording</button>` : ''}
       <button onclick="redo('${c.id}', this)">Re-analyze</button>
-      ${a.basis ? `<span class="meta" style="align-self:center">Based on ${esc(a.basis)}</span>` : ''}
+      ${a.basis ? `<span class="meta" style="align-self:center">Based on ${esc(a.basis)}${a.tErr ? ' · ' + esc(a.tErr) : ''}</span>` : ''}
     </div>
     ${a.transcript ? `<details><summary class="meta" style="cursor:pointer;margin-top:8px">Transcript</summary><pre>${esc(a.transcript)}</pre></details>` : ''}
   </div>`;
@@ -348,12 +363,11 @@ function callCard(c){
 
 function renderLog(){
   const q = $('#q').value.trim().toLowerCase(), qd = q.replace(/\D/g,'');
-  const fo = $('#fOutcome').value, fp = $('#fProc').value, fs = $('#fSource').value, ft = $('#fType').value;
-  const list = CALLS.filter(c => {
+  const fo = $('#fOutcome').value, fp = $('#fProc').value, ft = $('#fType').value;
+  const list = VIEW.filter(c => {
     const a = A(c);
     if (fo && a.outcome !== fo) return false;
     if (fp && a.procedure !== fp) return false;
-    if (fs && c.source !== fs) return false;
     if (ft && a.call_type !== ft) return false;
     if (!q) return true;
     if (qd.length >= 3 && c.phone.replace(/\D/g,'').includes(qd)) return true;
@@ -363,10 +377,10 @@ function renderLog(){
 }
 
 function renderOpps(){
-  const opps = CALLS.filter(c => A(c).opportunity && A(c).outcome !== 'Booked')
+  const opps = VIEW.filter(c => A(c).opportunity && A(c).outcome !== 'Booked')
     .sort((x,y) => (A(y).high_value - A(x).high_value) || ((A(y).lead_quality||0) - (A(x).lead_quality||0)));
   const hv = opps.filter(c => A(c).high_value).length;
-  const missedNP = CALLS.filter(c => isNP(c) && A(c).outcome === 'Missed/Voicemail').length;
+  const missedNP = VIEW.filter(c => isNP(c) && A(c).outcome === 'Missed/Voicemail').length;
   const reasons = sortObj(count(opps, c => A(c).lost_reason));
   $('#oppKpis').innerHTML = [
     [opps.length, 'Callbacks worth making'],
@@ -379,7 +393,7 @@ function renderOpps(){
 
 function rollup(key){
   const m = {};
-  CALLS.forEach(c => { const k = key(c); if (!k) return; m[k] = m[k] || { calls:0, np:0, booked:0, hv:0, missed:0 };
+  VIEW.forEach(c => { const k = key(c); if (!k) return; m[k] = m[k] || { calls:0, np:0, booked:0, hv:0, missed:0 };
     const r = m[k]; r.calls++; if (isNP(c)) r.np++; if (A(c).outcome === 'Booked') r.booked++; if (A(c).high_value) r.hv++; if (!c.answered) r.missed++; });
   return Object.entries(m).sort((a,b) => b[1].calls - a[1].calls);
 }
@@ -410,7 +424,7 @@ async function redo(id, btn){
 }
 $('#csv').onclick = () => {
   const cols = ['Date (PT)','Caller','Phone','Duration','Answered','Source','Campaign','Keyword','Call type','Outcome','Procedure','High value','Lost reason','Lead quality','Handling','Opportunity','Next step','Summary'];
-  const rows = CALLS.map(c => { const a = A(c); return [fmtDT(c.start), a.caller_name || c.name, fmtPhone(c.phone), fmtDur(c.duration), c.answered?'Yes':'No', c.source, c.campaign, c.keyword,
+  const rows = VIEW.map(c => { const a = A(c); return [fmtDT(c.start), a.caller_name || c.name, fmtPhone(c.phone), fmtDur(c.duration), c.answered?'Yes':'No', c.source, c.campaign, c.keyword,
     a.call_type, a.outcome, a.procedure, a.high_value?'Yes':'', a.lost_reason, a.lead_quality, a.agent_score, a.opportunity?'Yes':'', a.next_step, a.summary]; });
   const csv = [cols, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));

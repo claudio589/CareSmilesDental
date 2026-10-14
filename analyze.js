@@ -2,7 +2,8 @@ const { send } = require('./_lib');
 
 const SYSTEM = `You analyze inbound phone calls for CARE Smiles (Care Hood River Dentistry), Hood River, Oregon — Dr. Andy Ray Burton.
 Practice context: premium, private-pay, biologic/regenerative dentistry. ABOI-certified implant provider. Core growth services: dental implants (single, full-arch/All-on-X, complex/bone loss, zygomatic) and sedation dentistry. Does NOT accept Medicaid (OHP in Oregon, Apple Health in Washington). Service area: Hood River, White Salmon, Bingen, Underwood, The Dalles and the Columbia River Gorge.
-Calls may be in English or Spanish. Speaker labels may be unknown — infer office staff vs caller from context.
+Calls may be in English or Spanish.
+If metadata shows answered=false or voicemail=true, outcome MUST be "Missed/Voicemail" and lost_reason "Not Answered". Speaker labels may be unknown — infer office staff vs caller from context.
 
 Return ONLY a JSON object, no markdown, with exactly these keys:
 {

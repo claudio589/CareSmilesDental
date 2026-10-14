@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CARE Smiles · Call Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#0D2132;--blue:#46C3FC;--green:#38E426;--orange:#FF850D;--yellow:#F4EB2D;--red:#F41F3D;--mag:#EF1FF4;
+  --g60:#606060;--g98:#989898;--gc5:#C5C5C5;--ge1:#E1E1E1;--gef:#EFEFEF;--gf7:#F7F7F7;
+  --bg:#F7F7F7;--card:#FFFFFF;--ink:#0D2132;--muted:#606060;--line:#E1E1E1;
+  --font:"Open Sans","Segoe UI",Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45}
+header{background:var(--navy);color:#fff;padding:22px 28px 0}
+.top{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;max-width:1400px;margin:0 auto}
+.brand h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.3px}
+.brand p{margin:4px 0 0;color:#9fb3c4;font-size:13px}
+.brand p b{color:var(--blue);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.controls button,.controls input{font:inherit;font-size:13px;border-radius:8px;border:1px solid #2a4258;background:#13304a;color:#fff;padding:7px 11px}
+.controls button{cursor:pointer}
+.controls button.on{background:var(--blue);border-color:var(--blue);color:var(--navy);font-weight:700}
+.controls input[type=date]{color-scheme:dark}
+nav{display:flex;gap:4px;max-width:1400px;margin:18px auto 0;overflow-x:auto}
+nav button{font:inherit;font-weight:600;background:none;border:0;color:#9fb3c4;padding:11px 16px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+nav button.on{color:#fff;border-bottom-color:var(--blue)}
+main{max-width:1400px;margin:0 auto;padding:22px 28px 60px}
+.status{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:18px;font-size:13px;color:var(--muted)}
+.bar{flex:1;height:6px;background:var(--gef);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--green);width:0;transition:width .3s}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;border-top:4px solid var(--navy)}
+.kpi:nth-child(2){border-top-color:var(--blue)}.kpi:nth-child(3){border-top-color:var(--green)}.kpi:nth-child(4){border-top-color:var(--green)}
+.kpi:nth-child(5){border-top-color:var(--red)}.kpi:nth-child(6){border-top-color:var(--orange)}.kpi:nth-child(7){border-top-color:var(--blue)}
+.kpi .v{font-size:28px;font-weight:800;letter-spacing:-.5px}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.card h3{margin:0 0 12px;font-size:15px;font-weight:700}
+.card .sub{font-size:12px;color:var(--muted);margin:-8px 0 12px}
+.chartbox{position:relative;height:250px}
+.tab{display:none}.tab.on{display:block}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.filters input,.filters select{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--gc5);border-radius:8px;background:#fff;color:var(--ink)}
+.filters input{flex:1;min-width:220px}
+.calls{display:grid;gap:10px}
+.call{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;border-left:5px solid var(--gc5)}
+.call.Booked{border-left-color:var(--green)}.call.Follow-up{border-left-color:var(--orange)}.call.NotBooked{border-left-color:var(--red)}.call.Missed{border-left-color:var(--red)}
+.ch{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+.who{font-weight:700;font-size:15px}
+.meta{font-size:12px;color:var(--muted)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.pill{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--gef);color:var(--ink)}
+.pill.ok{background:#dcf9d8;color:#16650d}.pill.warn{background:#ffe7cf;color:#8a4300}.pill.bad{background:#fde0e4;color:#9b0f22}.pill.hv{background:var(--navy);color:#fff}.pill.src{background:#dff4fe;color:#06587d}
+.sum{margin:6px 0 0}
+.next{margin-top:6px;font-size:13px}.next b{color:var(--navy)}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.acts button{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--gc5);background:#fff;border-radius:7px;padding:5px 10px;cursor:pointer;color:var(--ink)}
+.acts button:hover{border-color:var(--navy)}
+details pre{white-space:pre-wrap;font-family:var(--font);font-size:12.5px;background:var(--gf7);border-radius:8px;padding:10px;max-height:320px;overflow:auto;margin:8px 0 0}
+audio{width:100%;margin-top:8px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--gef);white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--gf7)}
+td.n,th.n{text-align:right}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+.foot{font-size:12px;color:var(--g98);margin-top:24px}
+@media (max-width:640px){header,main{padding-left:14px;padding-right:14px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="brand">
+      <h1>CARE Smiles · Call Intelligence</h1>
+      <p>Care Smiles Dental · Dr. Andy Ray Burton · Google Ads <b>464-245-1686</b> · CallRail company 624861441</p>
+    </div>
+    <div class="controls" id="presets">
+      <button data-d="7">7 days</button><button data-d="30" class="on">30 days</button><button data-d="90">90 days</button><button data-d="mtd">MTD</button>
+      <input type="date" id="dStart"><input type="date" id="dEnd"><button id="apply">Apply</button>
+      <button id="csv">Export CSV</button>
+    </div>
+  </div>
+  <nav id="tabs">
+    <button data-t="overview" class="on">Overview</button>
+    <button data-t="log">Call Log</button>
+    <button data-t="opps">Opportunities</button>
+    <button data-t="camps">Campaigns &amp; Keywords</button>
+  </nav>
+</header>
+<main>
+  <div class="status"><span id="statusText">Loading calls…</span><div class="bar"><i id="barFill"></i></div><button class="acts" id="reanalyze" style="border:0;background:none;color:var(--navy);font-weight:600;cursor:pointer">Re-analyze all</button></div>
+
+  <section class="tab on" id="t-overview">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid">
+      <div class="card"><h3>Daily call volume</h3><div class="sub">New patient calls vs everything else</div><div class="chartbox"><canvas id="cDaily"></canvas></div></div>
+      <div class="card"><h3>New patient outcomes</h3><div class="sub">Where first-time callers ended up</div><div class="chartbox"><canvas id="cOutcome"></canvas></div></div>
+      <div class="card"><h3>What callers asked about</h3><div class="sub">Procedure interest, new patients</div><div class="chartbox"><canvas id="cProc"></canvas></div></div>
+      <div class="card"><h3>Why new patients didn’t book</h3><div class="sub">Not booked, follow-up and missed calls</div><div class="chartbox"><canvas id="cLost"></canvas></div></div>
+      <div class="card"><h3>Calls by source</h3><div class="sub">Booked vs not, by CallRail source</div><div class="chartbox"><canvas id="cSource"></canvas></div></div>
+      <div class="card"><h3>Calls by hour</h3><div class="sub">Answered vs missed, Pacific time</div><div class="chartbox"><canvas id="cHour"></canvas></div></div>
+    </div>
+  </section>
+
+  <section class="tab" id="t-log">
+    <div class="filters">
+      <input id="q" placeholder="Search name, phone, summary, keyword…">
+      <select id="fOutcome"><option value="">All outcomes</option></select>
+      <select id="fProc"><option value="">All procedures</option></select>
+      <select id="fSource"><option value="">All sources</option></select>
+      <select id="fType"><option value="">All call types</option></select>
+    </div>
+    <div class="calls" id="logList"></div>
+  </section>
+
+  <section class="tab" id="t-opps">
+    <div class="kpis" id="oppKpis"></div>
+    <div class="calls" id="oppList"></div>
+  </section>
+
+  <section class="tab" id="t-camps">
+    <div class="grid" style="grid-template-columns:1fr">
+      <div class="card"><h3>Campaigns</h3><div class="sub">Google Ads campaign attribution from CallRail (account 464-245-1686)</div><div class="scroll"><table id="tCamp"></table></div></div>
+      <div class="card"><h3>Keywords</h3><div class="sub">Search terms / keywords that drove calls</div><div class="scroll"><table id="tKw"></table></div></div>
+      <div class="card"><h3>Sources &amp; landing pages</h3><div class="scroll"><table id="tSrc"></table></div></div>
+    </div>
+  </section>
+  <p class="foot">Prepared by OM Performance Marketing · Calls from CallRail · Transcription by AssemblyAI · Analysis by Claude</p>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const TZ = 'America/Los_Angeles'; // Hood River is Pacific; CallRail company is set to Mountain
+const PAL = ['#0D2132','#46C3FC','#38E426','#FF850D','#F4EB2D','#F41F3D','#EF1FF4','#606060'];
+const CACHE_KEY = 'careSmilesAnalysis.v1';
+let CALLS = [], ANALYSIS = {}, charts = {};
+try { ANALYSIS = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch { ANALYSIS = {}; }
+const save = () => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(ANALYSIS)); } catch {} };
+
+Chart.defaults.font.family = '"Open Sans","Segoe UI",Helvetica,Arial,sans-serif';
+Chart.defaults.color = '#606060';
+Chart.defaults.borderColor = '#EFEFEF';
+
+const ymd = d => d.toISOString().slice(0,10);
+function setRange(p){
+  const end = new Date(); let start = new Date();
+  if (p === 'mtd') start = new Date(end.getFullYear(), end.getMonth(), 1);
+  else start = new Date(Date.now() - (+p) * 864e5);
+  $('#dStart').value = ymd(start); $('#dEnd').value = ymd(end);
+}
+document.querySelectorAll('#presets [data-d]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#presets [data-d]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); setRange(b.dataset.d); load();
+});
+$('#apply').onclick = () => { document.querySelectorAll('#presets [data-d]').forEach(x => x.classList.remove('on')); load(); };
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on')); $('#t-' + b.dataset.t).classList.add('on');
+});
+
+// ---------- data ----------
+async function load(){
+  status('Loading calls from CallRail…', 0);
+  try {
+    const r = await fetch(`/api/calls?start=${$('#dStart').value}&end=${$('#dEnd').value}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    CALLS = d.calls;
+    render();
+    runQueue();
+  } catch (e) { status('Error: ' + e.message, 0); }
+}
+
+function status(t, pct){ $('#statusText').textContent = t; $('#barFill').style.width = (pct||0) + '%'; }
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function transcribe(id){
+  const s = await (await fetch('/api/transcribe-start?id=' + encodeURIComponent(id))).json();
+  if (!s.jobId) return '';
+  for (let i = 0; i < 60; i++) {
+    await sleep(4000);
+    const d = await (await fetch('/api/transcribe-status?job=' + s.jobId)).json();
+    if (d.status === 'completed') return d.text;
+    if (d.status === 'error' || d.error) return '';
+  }
+  return '';
+}
+
+async function analyzeCall(c){
+  let text = '', basis = 'metadata', transcript = '';
+  if (c.crTranscript) { transcript = c.crTranscript; }
+  else if (c.hasRecording && c.duration >= 15) { transcript = await transcribe(c.id); }
+  if (transcript) { text = transcript; basis = 'transcript'; }
+  else if (c.crSummary) { text = c.crSummary; basis = 'call summary'; }
+  else if (c.note) { text = c.note; basis = 'agent note'; }
+  else if (c.tags.length) { text = 'Tags: ' + c.tags.join(', '); basis = 'tags'; }
+  const meta = { start: c.start, duration_sec: c.duration, answered: c.answered, voicemail: c.voicemail, first_call: c.firstCall,
+    direction: c.direction, source: c.source, campaign: c.campaign, keyword: c.keyword, caller_id_name: c.name, city: c.city, lead_status: c.leadStatus };
+  const r = await fetch('/api/analyze', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ meta, text, basis }) });
+  const a = await r.json();
+  if (!r.ok) throw new Error(a.error);
+  a.transcript = transcript;
+  return a;
+}
+
+let running = false;
+async function runQueue(force){
+  if (running) return; running = true;
+  const todo = CALLS.filter(c => force || !ANALYSIS[c.id]);
+  let done = 0, failed = 0;
+  const total = todo.length;
+  if (!total) { status(`${CALLS.length} calls · all analyzed`, 100); running = false; return; }
+  const worker = async () => {
+    while (todo.length) {
+      const c = todo.shift();
+      try { ANALYSIS[c.id] = await analyzeCall(c); save(); } catch { failed++; }
+      done++;
+      status(`Analyzing calls… ${done}/${total}${failed ? ` · ${failed} failed` : ''}`, done / total * 100);
+      if (done % 3 === 0 || done === total) render();
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  status(`${CALLS.length} calls · analysis complete${failed ? ` · ${failed} failed (reload to retry)` : ''}`, 100);
+  running = false; render();
+}
+$('#reanalyze').onclick = () => { if (confirm('Re-run transcription and analysis for every call in this range?')) runQueue(true); };
+
+// ---------- helpers ----------
+const A = c => ANALYSIS[c.id] || {};
+const isNP = c => A(c).call_type === 'New Patient';
+const pt = s => new Date(s);
+const fmtPhone = p => { const d = String(p).replace(/\D/g,'').replace(/^1/,''); return d.length === 10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : p; };
+const fmtDur = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+const fmtDT = s => pt(s).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit', timeZone:TZ });
+const count = (arr, f) => arr.reduce((m, x) => { const k = f(x); if (k) m[k] = (m[k]||0) + 1; return m; }, {});
+const sortObj = o => Object.entries(o).sort((a,b) => b[1]-a[1]);
+const outClass = o => ({ 'Booked':'Booked','Follow-up Needed':'Follow-up','Not Booked':'NotBooked','Missed/Voicemail':'Missed' }[o] || '');
+const outPill = o => ({ 'Booked':'ok','Follow-up Needed':'warn','Not Booked':'bad','Missed/Voicemail':'bad' }[o] || '');
+
+function chart(id, cfg){ if (charts[id]) charts[id].destroy(); charts[id] = new Chart($('#'+id), cfg); }
+const baseOpts = (extra={}) => ({ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, usePointStyle:true } } }, ...extra });
+
+// ---------- render ----------
+function render(){
+  renderOverview(); fillFilters(); renderLog(); renderOpps(); renderCamps();
+}
+
+function renderOverview(){
+  const np = CALLS.filter(isNP);
+  const booked = np.filter(c => A(c).outcome === 'Booked').length;
+  const missed = CALLS.filter(c => !c.answered || A(c).outcome === 'Missed/Voicemail').length;
+  const hv = np.filter(c => A(c).high_value).length;
+  const opps = CALLS.filter(c => A(c).opportunity && A(c).outcome !== 'Booked').length;
+  const lq = np.map(c => A(c).lead_quality).filter(Boolean);
+  const k = [
+    [CALLS.length, 'Total calls'],
+    [np.length, 'New patient calls'],
+    [booked, 'New patients booked'],
+    [np.length ? Math.round(booked / np.length * 100) + '%' : '—', 'New patient booking rate'],
+    [missed, 'Missed / voicemail'],
+    [hv, 'Implant & sedation leads'],
+    [opps, 'Open callback opportunities']
+  ];
+  $('#kpis').innerHTML = k.map(([v,l]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+
+  // daily
+  const days = {}; CALLS.forEach(c => { const d = pt(c.start).toLocaleDateString('en-CA',{timeZone:TZ}); days[d] = days[d] || {np:0,o:0}; isNP(c) ? days[d].np++ : days[d].o++; });
+  const dk = Object.keys(days).sort();
+  chart('cDaily', { type:'bar', data:{ labels: dk.map(d => d.slice(5)), datasets:[
+    { label:'New patient', data: dk.map(d => days[d].np), backgroundColor:'#0D2132', borderRadius:3 },
+    { label:'Other', data: dk.map(d => days[d].o), backgroundColor:'#46C3FC', borderRadius:3 } ] },
+    options: baseOpts({ scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, ticks:{precision:0} } } }) });
+
+  const oc = sortObj(count(np, c => A(c).outcome));
+  const ocCol = { 'Booked':'#38E426','Follow-up Needed':'#FF850D','Not Booked':'#F41F3D','Missed/Voicemail':'#EF1FF4','Not Applicable':'#C5C5C5' };
+  chart('cOutcome', { type:'doughnut', data:{ labels: oc.map(x=>x[0]), datasets:[{ data: oc.map(x=>x[1]), backgroundColor: oc.map(x => ocCol[x[0]] || '#989898'), borderWidth:2, borderColor:'#fff' }] }, options: baseOpts({ cutout:'62%' }) });
+
+  const pc = sortObj(count(np, c => A(c).procedure));
+  chart('cProc', { type:'bar', data:{ labels: pc.map(x=>x[0]), datasets:[{ data: pc.map(x=>x[1]), backgroundColor: pc.map(x => /Implant|Full-Arch|Sedation/.test(x[0]) ? '#0D2132' : '#46C3FC'), borderRadius:4 }] },
+    options: baseOpts({ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ beginAtZero:true, ticks:{precision:0} }, y:{ grid:{display:false} } } }) });
+
+  const lc = sortObj(count(np, c => A(c).lost_reason));
+  chart('cLost', { type:'bar', data:{ labels: lc.map(x=>x[0]), datasets:[{ data: lc.map(x=>x[1]), backgroundColor:'#F41F3D', borderRadius:4 }] },
+    options: baseOpts({ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ beginAtZero:true, ticks:{precision:0} }, y:{ grid:{display:false} } } }) });
+
+  const srcs = sortObj(count(CALLS, c => c.source)).slice(0,8).map(x=>x[0]);
+  chart('cSource', { type:'bar', data:{ labels: srcs, datasets:[
+    { label:'Booked', data: srcs.map(s => CALLS.filter(c => c.source===s && A(c).outcome==='Booked').length), backgroundColor:'#38E426', borderRadius:3 },
+    { label:'Not booked / other', data: srcs.map(s => CALLS.filter(c => c.source===s && A(c).outcome!=='Booked').length), backgroundColor:'#0D2132', borderRadius:3 } ] },
+    options: baseOpts({ scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, ticks:{precision:0} } } }) });
+
+  const hrs = [...Array(24).keys()];
+  const hr = c => +pt(c.start).toLocaleString('en-US',{hour:'numeric',hour12:false,timeZone:TZ}) % 24;
+  chart('cHour', { type:'bar', data:{ labels: hrs.map(h => (h%12||12) + (h<12?'a':'p')), datasets:[
+    { label:'Answered', data: hrs.map(h => CALLS.filter(c => c.answered && hr(c)===h).length), backgroundColor:'#46C3FC', borderRadius:3 },
+    { label:'Missed', data: hrs.map(h => CALLS.filter(c => !c.answered && hr(c)===h).length), backgroundColor:'#F41F3D', borderRadius:3 } ] },
+    options: baseOpts({ scales:{ x:{ stacked:true, grid:{display:false} }, y:{ stacked:true, beginAtZero:true, ticks:{precision:0} } } }) });
+}
+
+function fillFilters(){
+  const fill = (sel, vals, label) => { const cur = $(sel).value; $(sel).innerHTML = `<option value="">${label}</option>` + [...new Set(vals.filter(Boolean))].sort().map(v => `<option ${v===cur?'selected':''}>${esc(v)}</option>`).join(''); };
+  fill('#fOutcome', CALLS.map(c => A(c).outcome), 'All outcomes');
+  fill('#fProc', CALLS.map(c => A(c).procedure), 'All procedures');
+  fill('#fSource', CALLS.map(c => c.source), 'All sources');
+  fill('#fType', CALLS.map(c => A(c).call_type), 'All call types');
+}
+['#q','#fOutcome','#fProc','#fSource','#fType'].forEach(s => $(s).addEventListener('input', renderLog));
+
+function callCard(c){
+  const a = A(c);
+  const name = a.caller_name || c.name || 'Unknown caller';
+  const idMismatch = a.caller_name && c.name && !c.name.toLowerCase().includes(a.caller_name.split(' ')[0].toLowerCase());
+  const pills = [
+    a.outcome && `<span class="pill ${outPill(a.outcome)}">${esc(a.outcome)}</span>`,
+    a.call_type && `<span class="pill">${esc(a.call_type)}</span>`,
+    a.procedure && a.procedure !== 'Unknown' && `<span class="pill ${a.high_value?'hv':''}">${esc(a.procedure)}</span>`,
+    a.lost_reason && `<span class="pill warn">${esc(a.lost_reason)}</span>`,
+    `<span class="pill src">${esc(c.source)}</span>`,
+    c.firstCall && `<span class="pill">First-time caller</span>`,
+    a.insurance_mentioned && `<span class="pill">Ins: ${esc(a.insurance_mentioned)}</span>`,
+    a.lead_quality && `<span class="pill">Lead ${a.lead_quality}/10</span>`,
+    a.agent_score ? `<span class="pill">Handling ${a.agent_score}/10</span>` : '',
+    ...c.tags.map(t => `<span class="pill">${esc(t)}</span>`)
+  ].filter(Boolean).join('');
+  return `<div class="call ${outClass(a.outcome)}">
+    <div class="ch"><div><span class="who">${esc(name)}</span> <span class="meta">· ${fmtPhone(c.phone)}${c.city ? ' · ' + esc(c.city) : ''}</span>
+      ${idMismatch ? `<div class="meta">Caller ID shows “${esc(c.name)}”</div>` : ''}</div>
+      <div class="meta">${fmtDT(c.start)} PT · ${fmtDur(c.duration)} · ${c.answered ? 'Answered' : 'Missed'}${c.campaign ? ' · ' + esc(c.campaign) : ''}${c.keyword ? ' · “' + esc(c.keyword) + '”' : ''}</div></div>
+    <div class="pills">${pills}</div>
+    ${a.summary ? `<p class="sum">${esc(a.summary)}</p>` : `<p class="sum meta">${ANALYSIS[c.id] ? '' : 'Analysis pending…'}</p>`}
+    ${a.next_step ? `<div class="next"><b>Next step:</b> ${esc(a.next_step)}</div>` : ''}
+    <div class="acts">
+      ${c.hasRecording ? `<button onclick="play('${c.id}', this)">Play recording</button>` : ''}
+      <button onclick="redo('${c.id}', this)">Re-analyze</button>
+      ${a.basis ? `<span class="meta" style="align-self:center">Based on ${esc(a.basis)}</span>` : ''}
+    </div>
+    ${a.transcript ? `<details><summary class="meta" style="cursor:pointer;margin-top:8px">Transcript</summary><pre>${esc(a.transcript)}</pre></details>` : ''}
+  </div>`;
+}
+
+function renderLog(){
+  const q = $('#q').value.trim().toLowerCase(), qd = q.replace(/\D/g,'');
+  const fo = $('#fOutcome').value, fp = $('#fProc').value, fs = $('#fSource').value, ft = $('#fType').value;
+  const list = CALLS.filter(c => {
+    const a = A(c);
+    if (fo && a.outcome !== fo) return false;
+    if (fp && a.procedure !== fp) return false;
+    if (fs && c.source !== fs) return false;
+    if (ft && a.call_type !== ft) return false;
+    if (!q) return true;
+    if (qd.length >= 3 && c.phone.replace(/\D/g,'').includes(qd)) return true;
+    return [c.name, a.caller_name, a.summary, c.keyword, c.campaign, a.procedure, c.note, a.transcript].join(' ').toLowerCase().includes(q);
+  });
+  $('#logList').innerHTML = list.length ? list.map(callCard).join('') : '<div class="empty">No calls match.</div>';
+}
+
+function renderOpps(){
+  const opps = CALLS.filter(c => A(c).opportunity && A(c).outcome !== 'Booked')
+    .sort((x,y) => (A(y).high_value - A(x).high_value) || ((A(y).lead_quality||0) - (A(x).lead_quality||0)));
+  const hv = opps.filter(c => A(c).high_value).length;
+  const missedNP = CALLS.filter(c => isNP(c) && A(c).outcome === 'Missed/Voicemail').length;
+  const reasons = sortObj(count(opps, c => A(c).lost_reason));
+  $('#oppKpis').innerHTML = [
+    [opps.length, 'Callbacks worth making'],
+    [hv, 'Implant / sedation / full-arch'],
+    [missedNP, 'New patients who hit voicemail'],
+    [reasons[0] ? reasons[0][0] : '—', 'Most common blocker']
+  ].map(([v,l]) => `<div class="kpi"><div class="v" style="${String(v).length>6?'font-size:18px':''}">${esc(v)}</div><div class="l">${l}</div></div>`).join('');
+  $('#oppList').innerHTML = opps.length ? opps.map(callCard).join('') : '<div class="empty">No open opportunities in this range.</div>';
+}
+
+function rollup(key){
+  const m = {};
+  CALLS.forEach(c => { const k = key(c); if (!k) return; m[k] = m[k] || { calls:0, np:0, booked:0, hv:0, missed:0 };
+    const r = m[k]; r.calls++; if (isNP(c)) r.np++; if (A(c).outcome === 'Booked') r.booked++; if (A(c).high_value) r.hv++; if (!c.answered) r.missed++; });
+  return Object.entries(m).sort((a,b) => b[1].calls - a[1].calls);
+}
+function table(id, label, rows){
+  $('#'+id).innerHTML = rows.length ? `<tr><th>${label}</th><th class="n">Calls</th><th class="n">New pt</th><th class="n">Booked</th><th class="n">Book rate</th><th class="n">Implant/sedation</th><th class="n">Missed</th></tr>` +
+    rows.map(([k,r]) => `<tr><td>${esc(k)}</td><td class="n">${r.calls}</td><td class="n">${r.np}</td><td class="n">${r.booked}</td><td class="n">${r.np ? Math.round(r.booked/r.np*100)+'%' : '—'}</td><td class="n">${r.hv}</td><td class="n">${r.missed}</td></tr>`).join('')
+    : `<tr><td class="empty">No ${label.toLowerCase()} data in this range.</td></tr>`;
+}
+function renderCamps(){
+  table('tCamp', 'Campaign', rollup(c => c.campaign));
+  table('tKw', 'Keyword', rollup(c => c.keyword));
+  table('tSrc', 'Source · landing page', rollup(c => c.source + (c.landing ? ' · ' + c.landing.replace(/^https?:\/\/(www\.)?/,'').split('?')[0] : '')));
+}
+
+// ---------- actions ----------
+async function play(id, btn){
+  btn.disabled = true; btn.textContent = 'Loading…';
+  try {
+    const d = await (await fetch('/api/recording?id=' + encodeURIComponent(id))).json();
+    if (!d.url) throw new Error();
+    const au = document.createElement('audio'); au.controls = true; au.src = d.url; au.autoplay = true;
+    btn.closest('.call').appendChild(au); btn.remove();
+  } catch { btn.textContent = 'Recording unavailable'; }
+}
+async function redo(id, btn){
+  const c = CALLS.find(x => x.id === id); btn.disabled = true; btn.textContent = 'Analyzing…';
+  try { ANALYSIS[id] = await analyzeCall(c); save(); render(); } catch (e) { btn.textContent = 'Failed'; }
+}
+$('#csv').onclick = () => {
+  const cols = ['Date (PT)','Caller','Phone','Duration','Answered','Source','Campaign','Keyword','Call type','Outcome','Procedure','High value','Lost reason','Lead quality','Handling','Opportunity','Next step','Summary'];
+  const rows = CALLS.map(c => { const a = A(c); return [fmtDT(c.start), a.caller_name || c.name, fmtPhone(c.phone), fmtDur(c.duration), c.answered?'Yes':'No', c.source, c.campaign, c.keyword,
+    a.call_type, a.outcome, a.procedure, a.high_value?'Yes':'', a.lost_reason, a.lead_quality, a.agent_score, a.opportunity?'Yes':'', a.next_step, a.summary]; });
+  const csv = [cols, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = `care-smiles-calls_${$('#dStart').value}_${$('#dEnd').value}.csv`; a.click();
+};
+
+setRange(30); load();
+</script>
+</body>
+</html>

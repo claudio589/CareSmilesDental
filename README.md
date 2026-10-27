@@ -1,30 +1,21 @@
-# CARE Smiles · Call Intelligence Dashboard
+# CARE Smiles Dental — Call Intelligence Dashboard
 
-Care Hood River Dentistry (Dr. Andy Ray Burton). CallRail → AssemblyAI → Claude, deployed on Vercel. All keys server-side.
+Care Hood River Dentistry (Dr. Andy Ray Burton), Hood River OR. Live CallRail data, month-to-date by default,
+call times in Pacific. Paid calls only (Google Ads + LSA, organic GMB listing number excluded). LSA calls are split out
+by tracking-number pool (Local Services Ads number).
 
-- CallRail account: 561967665 · company (UI id): 624861441
-- Google Ads customer ID: 464-245-1686
+AssemblyAI transcribes each recorded call (language detection, speaker labels + practice/insurer key terms); Claude grades
+it on the 8-stage front-desk standard and classifies procedure, booked / not-booked reasons (main > secondary) and
+follow-up bucket.
 
-## Env vars (Vercel → Settings → Environment Variables)
-CALLRAIL_API_KEY      required
-ASSEMBLYAI_API_KEY    required
-ANTHROPIC_API_KEY     required
-CALLRAIL_ACCOUNT_ID   optional (defaults to 561967665)
-CALLRAIL_COMPANY_ID   optional — the COM… id. If unset, auto-resolves by matching 624861441, then a "Care" company name.
-ANTHROPIC_MODEL       optional (defaults to claude-haiku-4-5-20251001)
+- CallRail account 561967665 · company (UI id) 624861441 (COM... id resolved on load)
+- Google Ads customer ID 464-245-1686
 
 ## Deploy
-vercel --prod   (or push to GitHub and import)
+Vercel project `caresmilesdental` (https://caresmilesdental.vercel.app), connected to this repo. Push to `main` = deploy.
 
-After deploy, hit /api/companies once to confirm the right COM… id; pin it in CALLRAIL_COMPANY_ID.
+Env vars: `CALLRAIL_TOKEN`, `ASSEMBLYAI_KEY`, `ANTHROPIC_API_KEY` (required), `ALLOWED_ORIGINS` (optional).
+The Oct 14 names `CALLRAIL_API_KEY` / `ASSEMBLYAI_API_KEY` are also accepted.
 
-## Analysis cascade
-CallRail transcript → AssemblyAI transcript (recordings ≥15s) → CallRail call summary → agent note → tags → metadata only.
-Results cache in the browser (localStorage) so each call is only transcribed/analyzed once per browser. "Re-analyze all" forces a rerun.
-
-## Routes
-/api/calls?start=YYYY-MM-DD&end=YYYY-MM-DD
-/api/recording?id=CAL…
-/api/transcribe-start?id=CAL…  → /api/transcribe-status?job=…
-/api/analyze (POST)
-/api/companies (debug)
+The old routes from the Oct 14 build (`api/calls.js`, `api/recording.js`, `api/companies.js`, `api/transcribe-start.js`,
+`api/transcribe-status.js`, `api/_lib.js`) are no longer used and can be deleted from the repo.
